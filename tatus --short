@@ -1,0 +1,15 @@
+ .gitignore                                 |  20 [32m+++++++++[m
+ scripts/negishi/README.md                  |  28 [32m++++++++++++[m
+ scripts/negishi/cspan_count.sbatch         |  62 [32m+++++++++++++++++++++++++++[m
+ scripts/negishi/cspan_diagnose.sbatch      |  67 [32m+++++++++++++++++++++++++++++[m
+ scripts/negishi/cspan_ocr.py               |  82 [32m+++++++++++++++++++++++++++++++++++[m
+ scripts/negishi/cspan_ocr.sbatch           |  22 [32m++++++++++[m
+ scripts/negishi/cspan_parallel.sbatch      | 136 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ scripts/negishi/cspan_photos.sbatch        |  81 [32m+++++++++++++++++++++++++++++++++++[m
+ scripts/negishi/cspan_transcribe.py        | 104 [32m++++++++++++++++++++++++++++++++++++++++++++[m
+ scripts/negishi/cspan_transcribe_large.py  | 118 [32m++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ scripts/negishi/cspan_whisper.sbatch       |  27 [32m++++++++++++[m
+ scripts/negishi/cspan_whisper_large.sbatch |  32 [32m++++++++++++++[m
+ scripts/negishi/download.sbatch            |  18 [32m++++++++[m
+ scripts/negishi/download_tiktok_cspan.sh   | 152 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ 14 files changed, 949 insertions(+)
