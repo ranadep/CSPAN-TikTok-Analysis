@@ -1,0 +1,6 @@
+pandas
+scikit-learn
+torch
+transformers
+# On the Linux cluster install torch from the CPU index or you pull 2GB+ of unused CUDA:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
