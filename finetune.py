@@ -19,7 +19,6 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, get_linear_schedule_with_warmup
 import data
 
@@ -35,8 +34,9 @@ def pick_device(name):
 
 
 def make_batches(texts, labels, tok, shuffle, rng):
-    """Dynamic padding + length grouping. The single biggest CPU win here: the median comment
-    is 6 words, so padding everything to 64 wastes ~3.5x the compute."""
+    """Dynamic padding + length grouping. Worth ~12% on CPU (measured: 2.00 vs 2.27 s/step).
+    Less than the 3-4x you would expect from the token count -- short sequences do not
+    amortize the per-layer overhead."""
     order = np.arange(len(texts))
     if shuffle:
         rng.shuffle(order)
@@ -97,6 +97,8 @@ def main():
     p.add_argument("--folds", type=int, default=5)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--device", default="auto")
+    p.add_argument("--all", action="store_true",
+                   help="train on all 3675 comments and save to model/ -- no score, no test set")
     p.add_argument("--predict", metavar="TEXT", nargs="*", help="score text with saved model/")
     a = p.parse_args()
 
@@ -117,15 +119,21 @@ def main():
 
     d = data.load(n_folds=a.folds, seed=0)
     data.check_no_leak(d)
-    folds = [a.fold] if a.fold is not None else sorted(d.fold.unique())
+    folds = [a.fold] if a.fold is not None else sorted(int(f) for f in d.fold.unique())
     print(f"device={device} threads={NCPU} folds={folds}", flush=True)
+
+    if a.all:
+        # fold -1 matches no row, so the train set is everything and the test set is empty.
+        # This is the production model. Cross-validation measures the method; this is the artifact.
+        model, _, _ = train_fold(d, -1, tok, device, a.seed)
+        model.save_pretrained(OUT); tok.save_pretrained(OUT)
+        print(f"saved model trained on all {len(d)} comments -> {OUT}/")
+        return
 
     pred = np.full(len(d), -1)
     for k in folds:
-        model, pk, te = train_fold(d, k, tok, device, a.seed)
+        _, pk, te = train_fold(d, k, tok, device, a.seed)
         pred[te] = pk
-        if k == folds[0]:
-            model.save_pretrained(OUT); tok.save_pretrained(OUT)
 
     scored = d[pred >= 0].reset_index(drop=True)
     data.report(scored, pred[pred >= 0], f"twitter-roberta 5->3 (folds {folds}, seed {a.seed})")

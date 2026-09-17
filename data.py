@@ -5,10 +5,13 @@ re-scraped across 64 timestamp snapshots. Splitting on rows puts copies of a com
 in both train and test (measured: 0.88 accuracy vs 0.64 honest). Two rules fix it:
 dedup to unique text, and group folds by video_id so a held-out video is genuinely unseen.
 """
+from pathlib import Path
+
 import pandas as pd
 from sklearn.model_selection import StratifiedGroupKFold
 
-CSV = "/Users/ayushagarwal/Downloads/Comments with Labels Anonymized.csv"
+# script-relative so it works from any cwd (srun does not always start in the repo)
+CSV = Path(__file__).parent / "Comments with Labels Anonymized.csv"
 
 LABELS5 = ["Anti-Democrat", "Anti-Republican", "Neutral", "Pro-Democrat", "Pro-Republican"]
 LABELS3 = ["left", "neutral", "right"]
@@ -17,7 +20,7 @@ COLLAPSE = [2, 0, 1, 0, 2]  # 5-class index -> 3-class index
 
 def load(n_folds=5, seed=0):
     df = pd.read_csv(CSV).dropna(subset=["comment_text", "label"])
-    mode = lambda s: s.mode().iat[0]  # ponytail: ties break alphabetically; only 49 texts disagree
+    mode = lambda s: s.mode().iat[0] 
     d = (df.groupby("comment_text", sort=False)
            .agg(label=("label", mode), video_id=("video_id", mode))
            .reset_index())

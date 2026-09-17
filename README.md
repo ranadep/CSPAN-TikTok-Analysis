@@ -39,8 +39,10 @@ echo "Trump 2024" | .venv/bin/python finetune.py --predict
 - **Trains a 5-class head, collapses to 3 at argmax.** The 5-class distribution is far more
   balanced (1.55:1 vs 2.16:1), so it dissolves the imbalance for free. Collapse by argmax —
   summing the pro/anti probabilities measured worse.
-- **Dynamic, length-grouped padding.** The median comment is 6 words. Padding everything to
-  `max_length=64` wastes ~3.5x the compute — this is the single biggest CPU win.
+- **`max_length=64`, dynamic length-grouped padding.** p95 is 29 words; the default 512 would
+  be ~8x wasted compute. Dynamic padding on top of that is worth a further ~12% (measured on
+  Apple Silicon: 2.00 vs 2.27 s/step — less than the 3-4x you'd naively expect, because short
+  sequences don't amortize per-layer overhead).
 - **No dataloader workers on CPU.** They steal cores from the GEMM threads. Same reason
   `bf16` and `gradient_checkpointing` are off.
 - **Emoji matter.** 9% of comments are pure emoji (💙 is a strong left signal). RoBERTa's
