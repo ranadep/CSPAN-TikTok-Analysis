@@ -1,6 +1,12 @@
+# torch is deliberately NOT listed here. On Linux, `pip install torch` from default PyPI
+# pulls the CUDA build plus ~2.5 GB of nvidia-* packages that a CPU node never uses.
+# Install it first, from the CPU index:
+#
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+#
+# On macOS the default wheel is already CPU/MPS, so either command works there.
+
 pandas
 scikit-learn
-torch
 transformers
-# On the Linux cluster install torch from the CPU index or you pull 2GB+ of unused CUDA:
-#   pip install torch --index-url https://download.pytorch.org/whl/cpu

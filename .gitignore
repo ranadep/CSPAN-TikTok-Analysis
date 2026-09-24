@@ -3,3 +3,4 @@ model/
 logs/
 __pycache__/
 *.csv
+.DS_Store

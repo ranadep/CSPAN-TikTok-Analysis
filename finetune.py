@@ -11,7 +11,10 @@ balanced (1.55:1 vs 2.16:1), so it dissolves the imbalance for free. Output is s
 import argparse, os, sys
 
 # must precede the torch import
-NCPU = int(os.environ.get("SLURM_CPUS_PER_TASK") or os.cpu_count())
+# sched_getaffinity respects cpuset limits; os.cpu_count() reports the host's cores and
+# will oversubscribe badly inside a container. SLURM_CPUS_PER_TASK wins when it is set.
+NCPU = int(os.environ.get("SLURM_CPUS_PER_TASK") or
+           (len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count()))
 for var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS"):
     os.environ.setdefault(var, str(NCPU))
 os.environ.setdefault("OMP_PROC_BIND", "close")

@@ -11,7 +11,8 @@
 # Do NOT add dataloader workers: on CPU they steal cores from the GEMM threads.
 
 cd "$SLURM_SUBMIT_DIR" || exit 1
-source .venv/bin/activate
+# Use a venv if one exists; otherwise fall back to whatever python is on PATH.
+[ -f .venv/bin/activate ] && source .venv/bin/activate
 
 # Warm this cache on the login node first (see README), then the compute nodes never
 # need the network. Without it, 15 tasks each try to download the model at once.
