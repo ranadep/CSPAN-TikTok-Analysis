@@ -6,10 +6,11 @@ baseline.py and finetune.py. Compare only against runs from the same machine: th
 assignment depends on the pandas / scikit-learn versions.
 """
 import argparse, glob, re
-from finetune import make_batches, pick_device, NCPU  # first: sets thread env vars before torch loads
+from finetune import make_batches, pick_device, NCPU, BATCH  # first: sets thread env vars before torch loads
 import numpy as np
 import torch
 from sklearn.metrics import f1_score
+from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import data, baseline
 
@@ -27,7 +28,10 @@ def zero_shot(repo, tok_repo, mapping, texts, device):
     tok = AutoTokenizer.from_pretrained(tok_repo or repo)
     model = AutoModelForSequenceClassification.from_pretrained(repo).to(device).eval()
     out = np.empty(len(texts), dtype=int)
-    for c, enc, _ in make_batches(texts, None, tok, False, None):
+    batches = make_batches(texts, None, tok, False, None)
+    # mininterval keeps a nohup log readable: one update every 2s, not one per batch
+    for c, enc, _ in tqdm(batches, total=-(-len(texts) // BATCH), desc=repo.split("/")[-1],
+                          unit="batch", mininterval=2):
         enc = {k: v.to(device) for k, v in enc.items()}
         out[c] = model(**enc).logits.argmax(-1).cpu().numpy()
     return np.array(mapping)[out]
