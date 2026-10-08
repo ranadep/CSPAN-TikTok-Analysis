@@ -58,26 +58,29 @@ def make_batches(texts, labels, tok, shuffle, rng):
         yield c, enc, (torch.tensor(labels[c]) if labels is not None else None)
 
 
-def train_fold(d, fold, tok, device, seed):
+def train_fold(d, fold, tok, device, seed, model_name=MODEL, lr=LR, epochs=EPOCHS, label_smoothing=0.0):
+    """Defaults are the settings behind the reported results; tune.py overrides them."""
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
     tr, te = (d.fold != fold).values, (d.fold == fold).values
     x_tr, y_tr = d.comment_text.values[tr], d.y5.values[tr]
 
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL, num_labels=5).to(device)
-    opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=0.01)
-    steps = EPOCHS * -(-len(x_tr) // BATCH)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=5).to(device)
+    opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
+    steps = epochs * -(-len(x_tr) // BATCH)
     sched = get_linear_schedule_with_warmup(opt, int(WARMUP * steps), steps)
 
-    for epoch in range(EPOCHS):
+    for epoch in range(epochs):
         model.train()
         for _, enc, y in make_batches(x_tr, y_tr, tok, True, rng):
             enc = {k: v.to(device) for k, v in enc.items()}
-            loss = model(**enc, labels=y.to(device)).loss
+            # label smoothing softens the targets; it can help when some labels are wrong
+            loss = torch.nn.functional.cross_entropy(model(**enc).logits, y.to(device),
+                                                     label_smoothing=label_smoothing)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step(); sched.step(); opt.zero_grad()
-        print(f"  fold {fold} epoch {epoch + 1}/{EPOCHS} done", flush=True)
+        print(f"  fold {fold} epoch {epoch + 1}/{epochs} done", flush=True)
 
     return model, predict(model, d.comment_text.values[te], tok, device), te
 

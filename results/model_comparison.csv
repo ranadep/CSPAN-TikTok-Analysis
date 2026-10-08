@@ -1,0 +1,6 @@
+model,type,seeds,macro_f1_mean,macro_f1_std,fold0_f1,fold1_f1,fold2_f1,fold3_f1,fold4_f1,accuracy,lr_accuracy,left_precision,left_recall,left_f1,neutral_precision,neutral_recall,neutral_f1,right_precision,right_recall,right_f1,emoji_only_f1,has_text_f1,cm_left_left,cm_left_neutral,cm_left_right,cm_neutral_left,cm_neutral_neutral,cm_neutral_right,cm_right_left,cm_right_neutral,cm_right_right
+cardiffnlp/twitter-roberta-base-2022-154m,fine-tuned,3,0.625,0.048,0.674,0.555,0.672,0.638,0.585,0.652,,,,,,,,,,,,,,,,,,,,,
+TF-IDF + LogReg baseline,trained,1,0.555,0.051,0.580,0.486,0.614,0.593,0.501,0.571,0.574,0.651,0.599,0.624,0.436,0.561,0.490,0.581,0.540,0.560,0.600,0.549,991,320,344,191,429,145,341,236,678
+matous-volf/political-leaning-politics,zero-shot,,0.311,0.019,0.316,0.310,0.275,0.333,0.319,0.433,0.546,0.480,0.665,0.558,0.167,0.003,0.005,0.356,0.390,0.372,0.184,0.324,1100,7,548,428,2,335,763,3,489
+m-newhauser/distilbert-political-tweets,zero-shot,,0.304,0.030,0.325,0.296,0.288,0.350,0.264,0.411,0.519,0.480,0.505,0.492,0.000,0.000,0.000,0.348,0.536,0.422,0.251,0.292,836,0,819,324,0,441,582,0,673
+bucketresearch/politicalBiasBERT,zero-shot,,0.274,0.016,0.261,0.284,0.251,0.296,0.277,0.328,0.376,0.440,0.132,0.203,0.161,0.144,0.152,0.352,0.698,0.468,0.120,0.262,219,372,1064,103,110,552,176,203,876
