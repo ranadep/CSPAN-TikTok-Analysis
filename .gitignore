@@ -5,3 +5,14 @@ __pycache__/
 *.csv
 .DS_Store
 !results/*.csv
+# data (raye22/tiktok_personalization), checkpoints, predictions, secrets
+*.npz
+*.safetensors
+*.bin
+*.pt
+checkpoints/
+results/preds/
+results/FINAL_HOLDOUT_DONE
+.env
+*.key
+.hf/

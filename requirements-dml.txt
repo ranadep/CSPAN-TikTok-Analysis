@@ -1,0 +1,12 @@
+# Windows + AMD GPU (RX 7700 XT) via DirectML. Python 3.11 (torch-directml has no 3.13 wheel).
+# torch-directml pins torch 2.4.1, so transformers will not torch.load *.bin checkpoints
+# (CVE-2025-32434 gate): convert them once to safetensors under $MODEL_DIR (exp_utils.resolve_model).
+# exp_utils.SimpleAdamW replaces torch AdamW on DirectML (lerp_ has no DML kernel).
+torch-directml
+pandas
+scikit-learn
+transformers<4.57
+tqdm
+matplotlib
+sentencepiece
+protobuf

@@ -12,6 +12,8 @@ from sklearn.model_selection import StratifiedGroupKFold
 
 # script-relative so it works from any cwd (srun does not always start in the repo)
 CSV = Path(__file__).parent / "Comments with Labels Anonymized.csv"
+if not CSV.exists():  # same file under its upstream name (raye22/tiktok_personalization data/)
+    CSV = Path(__file__).parent / "comments_with_labels_for_all_three_group_anonymized.csv"
 
 LABELS5 = ["Anti-Democrat", "Anti-Republican", "Neutral", "Pro-Democrat", "Pro-Republican"]
 LABELS3 = ["left", "neutral", "right"]
