@@ -29,6 +29,10 @@ import protocol as P
 from exp_utils import pick_device, is_dml, make_optimizer, resolve_model, log_run, done_runs, ROOT
 
 COLLAPSE = torch.tensor(data.COLLAPSE)
+# Batches are padded up to a multiple of this many tokens. DirectML keeps separate buffers per tensor shape,
+# so free-length padding (up to max_len distinct shapes) grew one 256-token fold to 13.8 GB of committed
+# memory. Padding is masked out, so predictions are unchanged up to float rounding. Set by --pad-multiple.
+PAD_MULTIPLE = 32
 CURVES = ROOT / "results" / "curves.csv"
 
 
@@ -97,7 +101,7 @@ def batches(enc, labels, bs, shuffle, rng, pad_id):
     if shuffle:
         rng.shuffle(chunks)
     for c in chunks:
-        L = lens[c].max()
+        L = -(-int(lens[c].max()) // PAD_MULTIPLE) * PAD_MULTIPLE
         ids = np.full((len(c), L), pad_id, dtype=np.int64)
         mask = np.zeros((len(c), L), dtype=np.int64)
         for r, j in enumerate(c):
@@ -237,6 +241,7 @@ def main():
     p.add_argument("--device", default="auto")
     p.add_argument("--optim", choices=["auto", "scratch", "offload"], default="auto",
                    help="auto: torch AdamW (SimpleAdamW on DirectML); scratch/offload: for large models on DML")
+    p.add_argument("--pad-multiple", type=int, default=32, help="pad each batch to a multiple of N tokens")
     p.add_argument("--fp16", action="store_true", help="CUDA only (ignored elsewhere)")
     p.add_argument("--shuffle-labels", action="store_true")
     p.add_argument("--final-holdout", action="store_true",
@@ -248,6 +253,8 @@ def main():
     a = p.parse_args()
     if a.max_len is None:
         a.max_len = 160 if a.input == "pair" else 64
+    global PAD_MULTIPLE
+    PAD_MULTIPLE = a.pad_multiple
 
     device = pick_device(a.device)
     torch.set_num_threads(min(10, os.cpu_count() or 1))
