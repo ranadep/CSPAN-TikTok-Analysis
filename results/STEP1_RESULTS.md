@@ -8,6 +8,7 @@ accuracy. Noise floor: fold std ≈ 0.05. Every run is in `results/runs.csv`; cu
 |---|---|---|---|---|---|---|
 | — | E0_comment | reference: comment only | 0.607 ± 0.054 | 0.625 | 0.617 / 0.633 | reference |
 | 1 | **E1_pair** | + video description as a sentence pair (max_len 160) | **0.642 ± 0.054** | **0.673** | **0.660 / 0.691** | **adopted (current best)** |
+| 1b | E1b_pair_len256 | max_len 160 → 256 (48.6% of pairs were truncated) | 0.649 ± 0.048 (6/15 runs) | 0.687 | — | **stopped early: noise** (paired +0.001 ± 0.046 vs E1 on the same 6 runs) |
 
 ## E1: comment + video description
 
@@ -30,8 +31,19 @@ accuracy. Noise floor: fold std ≈ 0.05. Every run is in `results/runs.csv`; cu
 * Curves: val loss bottoms out at epochs 2–3 while val F1 peaks at epochs 4–5. Mean best epoch is 4.8, and 13 of 15
   runs went 6 epochs, so the model is still overconfident. Label smoothing (idea 3) targets this.
 
+## E1b: longer description context — stopped
+
+Paired with E1 on the 6 completed (seed, fold) runs: +0.078, +0.006, −0.065, −0.010, +0.007, −0.008 → mean +0.001.
+It was stopped there, not finished, for two reasons: the effect is indistinguishable from zero, and at 256 tokens
+DirectML needs ~11 GB VRAM plus spill into system RAM, which slowed folds from ~6 min to 90+ min once other apps
+were using memory. Reported here, as with every run; not pursued.
+
+Infrastructure fixes made while running it (no effect on results): one process per (seed, fold), because DirectML
+does not release a finished fold's memory; batches padded to multiples of 32 tokens (identical predictions, max logit
+difference 7e-8).
+
 ## Queued next (one change each vs E1_pair)
 
-1b longer description context (max_len 256) · 2 lr 1e-5 · 2 lr 3e-5 · then 3 label smoothing 0.1, class-weighted CE ·
+E3 up to 20 epochs, patience 3 (5/15 E1 runs peaked at the 6-epoch cap) · E3d same + dropout 0.2 · 2 lr 1e-5 · 2 lr 3e-5 · then 3 label smoothing 0.1, class-weighted CE ·
 4 bertweet-base, deberta-v3-base, (desktop only) roberta-large · 5 seed ensemble · if gains flatten: BiLSTM head /
 dropout.

@@ -12,7 +12,8 @@ run() {  # run <experiment> <train.py args...>
     echo "finished $exp"
 }
 set -x
-run E1b_pair_len256 --input pair --max-len 256
+# E1b_pair_len256 (max_len 256) stopped after 6/15 runs: +0.001 paired F1 vs E1 (noise), and on DirectML it
+# needs ~11 GB VRAM + spill to system RAM, which slowed folds from ~6 min to 90+ min. Not pursued.
 # user request: train much longer; early stopping on val F1 still picks the epoch
 run E3_pair_ep20_pat3 --input pair --epochs 20 --patience 3
 # user request: more dropout for long training (one change vs E3: encoder dropout 0.1 -> 0.2)
