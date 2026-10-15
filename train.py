@@ -147,7 +147,7 @@ def run_one(a, tok, device, train, val, test, seed, fold, n_purged, tag):
     np.random.seed(seed)
     rng = np.random.default_rng(seed)
     y_tr = train.y5.values.astype(np.int64)
-    if a.shuffle_labels:  # sanity check: permute training labels only; val/test keep true labels
+    if a.shuffle_labels:  # sanity check: permute training (and, below, val) labels; test keeps true labels
         y_tr = np.random.default_rng(10_000 + seed).permutation(y_tr)
     e_tr, e_va, e_te = encode(tok, train, a), encode(tok, val, a), encode(tok, test, a)
     pad = tok.pad_token_id
@@ -161,8 +161,11 @@ def run_one(a, tok, device, train, val, test, seed, fold, n_purged, tag):
     use_amp = a.fp16 and device.type == "cuda"
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
 
-    y_va3 = val.y3.values
-    y_va5 = torch.from_numpy(val.y5.values.astype(np.int64))
+    y_va5 = val.y5.values.astype(np.int64)
+    if a.shuffle_labels:  # val labels permuted too: early stopping must not see a true label either
+        y_va5 = np.random.default_rng(20_000 + seed).permutation(y_va5)
+    y_va3 = np.array(data.COLLAPSE)[y_va5]
+    y_va5 = torch.from_numpy(y_va5)
     best = (-1.0, None, None, 0)  # f1, state, val_loss, epoch
     bad, curves, tr_loss = 0, [], float("nan")
     for epoch in range(1, a.epochs + 1):
