@@ -153,7 +153,7 @@ def run_one(a, tok, device, train, val, test, seed, fold, n_purged, tag):
     pad = tok.pad_token_id
 
     model = build_model(a).to(device)
-    opt = make_optimizer(model.parameters(), device, a.lr, a.weight_decay)
+    opt = make_optimizer(model.parameters(), device, a.lr, a.weight_decay, a.optim)
     steps_per_epoch = -(-len(y_tr) // (a.batch * a.grad_accum))
     total = a.epochs * steps_per_epoch
     sched = get_linear_schedule_with_warmup(opt, int(a.warmup * total), total)
@@ -232,6 +232,8 @@ def main():
     p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     p.add_argument("--folds", type=int, nargs="+", default=None)
     p.add_argument("--device", default="auto")
+    p.add_argument("--optim", choices=["auto", "scratch", "offload"], default="auto",
+                   help="auto: torch AdamW (SimpleAdamW on DirectML); scratch/offload: for large models on DML")
     p.add_argument("--fp16", action="store_true", help="CUDA only (ignored elsewhere)")
     p.add_argument("--shuffle-labels", action="store_true")
     p.add_argument("--final-holdout", action="store_true",
@@ -253,9 +255,19 @@ def main():
     print(f"device={device} cfg={json.dumps(cfg)}", flush=True)
 
     if a.final_holdout:
+        # Run-once guard, committed to git so it travels with the repo. Written BEFORE the first
+        # holdout prediction; a crash mid-run may only finish the *same* run's remaining seeds.
         marker = ROOT / "results" / "FINAL_HOLDOUT_DONE"
-        assert not marker.exists(), f"holdout already scored ({marker}); it is run exactly once"
+        if marker.exists():
+            state = marker.read_text().split()
+            assert state[:2] == ["STARTED", a.experiment], \
+                f"holdout already used ({marker}: {' '.join(state)}); it is scored exactly once"
+            print(f"resuming interrupted final run {a.experiment}", flush=True)
+        else:
+            marker.write_text(f"STARTED {a.experiment}\n")
         for seed in a.seeds:
+            if f"{a.experiment}-s{seed}-holdout" in done_runs():
+                continue
             train, val, hold, n_purged = P.final_split(seed=0)
             t0 = time.time()
             model, lt, best, curves, tr_loss = run_one(a, tok, device, train, val, hold, seed, -1, n_purged, "FINAL")
@@ -277,7 +289,7 @@ def main():
                  else torch.save(model.state_dict(), sd.with_suffix(".pt")))
                 tok.save_pretrained(sd)
             del model
-        marker.write_text(f"{a.experiment}\n")
+        marker.write_text(f"COMPLETE {a.experiment}\n")
         return
 
     if a.leave_cspan_out:
@@ -292,7 +304,7 @@ def main():
             np.savez(pred_dir / f"s{seed}_lcso_{a.leave_cspan_out}.npz", logits=lt, idx=test.index.values, y3=y)
             save_curves(a.experiment, seed, -2, curves)
             log_run(run_id=f"{a.experiment}-s{seed}-lcso-{a.leave_cspan_out}", experiment=a.experiment,
-                    protocol=f"leave_cspan_out_{a.leave_cspan_out}", config=cfg, seed=seed, fold=-2,
+                    protocol=f"leave_cspan_out_{a.leave_cspan_out}_{P.NEAR_DUP_VERSION}", config=cfg, seed=seed, fold=-2,
                     n_train=len(train), n_test=len(test), macro_f1=round(f1, 4), accuracy=round(acc, 4),
                     best_epoch=best[3], epochs_run=len(curves), train_loss_last=round(tr_loss, 4),
                     val_loss_best=round(best[2], 4), val_f1_best=round(best[0], 4),
@@ -322,7 +334,7 @@ def main():
             np.savez(pred_dir / f"s{seed}_f{k}.npz", logits=lt, idx=test.index.values, y3=y)
             save_curves(a.experiment, seed, k, curves)
             log_run(run_id=f"{a.experiment}-s{seed}-f{k}", experiment=a.experiment,
-                    protocol="dev52_5fold" + ("_shuffled" if a.shuffle_labels else ""),
+                    protocol="dev52_5fold" + ("_shuffled" if a.shuffle_labels else "") + "_" + P.NEAR_DUP_VERSION,
                     config=cfg, seed=seed, fold=k, n_train=len(train), n_test=len(test),
                     macro_f1=round(f1, 4), accuracy=round(acc, 4), best_epoch=best[3],
                     epochs_run=len(curves), train_loss_last=round(tr_loss, 4),

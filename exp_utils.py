@@ -75,6 +75,40 @@ class SimpleAdamW(torch.optim.Optimizer):
                 p.addcdiv_(st["m"], denom, value=-g["lr"] / (1 - b1 ** t))
 
 
+class ScratchAdamW(torch.optim.Optimizer):
+    """SimpleAdamW with zero per-step allocations: the denominator is written into one shared
+    scratch buffer sized for the largest parameter. DirectML frees temporaries lazily, and the
+    per-parameter `sqrt` temporaries are what pushed roberta-large over the 12 GB card."""
+
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.0):
+        super().__init__(params, dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay))
+        self._scratch = None
+
+    @torch.no_grad()
+    def step(self, closure=None):
+        for g in self.param_groups:
+            b1, b2 = g["betas"]
+            for p in g["params"]:
+                if p.grad is None:
+                    continue
+                st = self.state[p]
+                if not st:
+                    st["t"], st["m"], st["v"] = 0, torch.zeros_like(p), torch.zeros_like(p)
+                if self._scratch is None:
+                    n = max(q.numel() for gg in self.param_groups for q in gg["params"])
+                    self._scratch = torch.empty(n, dtype=p.dtype, device=p.device)
+                st["t"] += 1
+                t = st["t"]
+                if g["weight_decay"]:
+                    p.mul_(1 - g["lr"] * g["weight_decay"])
+                st["m"].mul_(b1).add_(p.grad, alpha=1 - b1)
+                st["v"].mul_(b2).addcmul_(p.grad, p.grad, value=1 - b2)
+                denom = self._scratch[:p.numel()].view_as(p)
+                torch.sqrt(st["v"], out=denom)
+                denom.div_((1 - b2 ** t) ** 0.5).add_(g["eps"])
+                p.addcdiv_(st["m"], denom, value=-g["lr"] / (1 - b1 ** t))
+
+
 class OffloadAdamW(torch.optim.Optimizer):
     """AdamW whose fp32 master weights and moments live on CPU; only grads/params cross the
     bus. For roberta-large on DirectML, where weights+grads+moments (~5.7 GB) plus DML
@@ -107,7 +141,11 @@ class OffloadAdamW(torch.optim.Optimizer):
                 p.copy_(w.to(p.device))
 
 
-def make_optimizer(params, device, lr, weight_decay):
+def make_optimizer(params, device, lr, weight_decay, kind="auto"):
+    if kind == "scratch":
+        return ScratchAdamW(params, lr=lr, weight_decay=weight_decay)
+    if kind == "offload":
+        return OffloadAdamW(params, lr=lr, weight_decay=weight_decay)
     cls = SimpleAdamW if is_dml(device) else torch.optim.AdamW
     return cls(params, lr=lr, weight_decay=weight_decay)
 

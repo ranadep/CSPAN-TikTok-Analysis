@@ -46,7 +46,7 @@ def main():
             f1, acc = f1_score(te.y3, pr, average="macro"), (pr == te.y3.values).mean()
             f1s.append(f1); accs.append(acc)
             log_run(run_id=f"{name}-s{seed}-f{k}", experiment=name,
-                    protocol="dev52_5fold" + ("_shuffled" if a.shuffle_labels else ""),
+                    protocol="dev52_5fold" + ("_shuffled" if a.shuffle_labels else "") + "_" + P.NEAR_DUP_VERSION,
                     config={"model": "tfidf_logreg", "pair": a.pair}, seed=seed, fold=k,
                     n_train=len(tr), n_test=len(te), macro_f1=round(f1, 4), accuracy=round(acc, 4),
                     notes=f"near_dup_purged={n}")

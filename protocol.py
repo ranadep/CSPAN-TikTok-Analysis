@@ -3,7 +3,9 @@
 Built on data.load() -- the dedup step is unchanged. On top of it:
 
   * final holdout: 13 of the 65 videos (6 C-SPAN + 7 other, fixed seed), ids frozen in
-    splits/final_holdout_videos.txt. Only `train.py --final-holdout` reads those rows' labels.
+    splits/final_holdout_videos.txt. Among the new-protocol scripts only `train.py --final-holdout`
+    scores those rows. (The original-protocol reproductions -- repro_finetune.py, baseline.py --
+    necessarily use all 65 videos; their predictions are never used for analysis or selection.)
   * dev CV: 5 folds grouped by video over the remaining 52 videos.
   * inner validation: inside each CV training split, a grouped set of videos is held out for
     early stopping. The CV test fold is never used for stopping or selection-within-a-run.
@@ -16,10 +18,11 @@ Built on data.load() -- the dedup step is unchanged. On top of it:
 
     python protocol.py            # create (first time) / verify the holdout, print split stats
 """
-import re, unicodedata
+import unicodedata
 from pathlib import Path
 
 import numpy as np
+import regex  # grapheme clusters (\X); stdlib re cannot do this
 import pandas as pd
 from sklearn.model_selection import StratifiedGroupKFold
 
@@ -32,14 +35,21 @@ CSPAN = "cspanofficial"
 HOLDOUT_SEED, HOLDOUT_CSPAN, HOLDOUT_OTHER = 0, 6, 7
 CV_SEED, N_FOLDS, VAL_SPLITS = 0, 5, 6   # val = 1/6 of each CV training split's videos
 
-_REPEAT = re.compile(r"(\W)\1+")  # runs of the same non-word char (emoji, !!!) -> one
+# Repeated runs of a non-word grapheme cluster, or of a short sequence of them, collapse to one:
+# "💙💙💙" -> "💙", "👍🏻👍🏻" -> "👍🏻", "🇺🇸🇺🇸" -> "🇺🇸", "💙🇺🇸💙🇺🇸" -> "💙🇺🇸". Word characters are
+# never collapsed ("hahaha", "lies lies" stay distinct). Version nd2: the first version (nd1)
+# collapsed only single-codepoint repeats; the Step 0 review flagged skin tones, flags and
+# multi-emoji patterns. Runs tagged *_nd1 in results/runs.csv used the old normalizer.
+_EMOJI_RUN = regex.compile(r"((?:(?!\w)\X){1,4}?)\1+")
+NEAR_DUP_VERSION = "nd2"
 
 
 def normalize(text):
     t = unicodedata.normalize("NFKC", str(text)).lower().replace("️", "")
-    t = _REPEAT.sub(r"\1", t)
     t = "".join(ch for ch in t if not ch.isspace() and not unicodedata.category(ch).startswith("P"))
-    return _REPEAT.sub(r"\1", t)  # again: removing spaces can create new runs ("💙 💙")
+    for _ in range(3):  # nested patterns ("💙💙🇺🇸💙💙🇺🇸") need a second pass
+        t = _EMOJI_RUN.sub(r"\1", t)
+    return t
 
 
 def load_all():

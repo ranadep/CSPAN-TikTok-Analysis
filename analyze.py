@@ -46,8 +46,15 @@ def table(md=True):
     return t
 
 
+def assert_holdout_done():
+    m = RES / "FINAL_HOLDOUT_DONE"
+    assert m.exists() and m.read_text().startswith("COMPLETE"),         "holdout predictions may only be analysed after the one final run has completed"
+
+
 def load_preds(exp, seeds=None, holdout=False):
     """{seed: (logits, idx, y3)} concatenated over folds (or holdout)."""
+    if holdout:
+        assert_holdout_done()
     d = RES / "preds" / exp
     files = sorted(d.glob("s*_holdout.npz" if holdout else "s*_f*.npz"))
     by = {}
@@ -81,6 +88,8 @@ def ensemble(exp, holdout=False, quiet=False):
 
 
 def frame_for(exp, use_ensemble, holdout=False, seed=0):
+    if holdout:
+        assert_holdout_done()
     ref = P.load_holdout() if holdout else P.load_dev()
     if use_ensemble:
         b, _ = ensemble(exp, holdout=holdout, quiet=True)
