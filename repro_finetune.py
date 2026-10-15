@@ -14,7 +14,7 @@ import torch
 from sklearn.metrics import f1_score
 from transformers import AutoTokenizer
 import data
-from exp_utils import pick_device, is_dml, SimpleAdamW, resolve_model, log_run, done_runs, ROOT
+from exp_utils import pick_device, is_dml, SimpleAdamW, OffloadAdamW, resolve_model, log_run, done_runs, ROOT
 
 
 def main():
@@ -28,11 +28,12 @@ def main():
     p.add_argument("--lr", type=float, default=F.LR)
     p.add_argument("--epochs", type=int, default=F.EPOCHS)
     p.add_argument("--label-smoothing", type=float, default=0.0)
+    p.add_argument("--offload-optim", action="store_true", help="AdamW state on CPU (roberta-large on 12 GB DML)")
     a = p.parse_args()
 
     device = pick_device(a.device)
     if is_dml(device):
-        F.torch.optim.AdamW = SimpleAdamW
+        F.torch.optim.AdamW = OffloadAdamW if a.offload_optim else SimpleAdamW
     torch.set_num_threads(F.NCPU)
     name = resolve_model(a.model)
     tok = AutoTokenizer.from_pretrained(name)
