@@ -14,7 +14,7 @@ import torch
 from sklearn.metrics import f1_score
 from transformers import AutoTokenizer
 import data
-from exp_utils import pick_device, is_dml, SimpleAdamW, resolve_model, log_run
+from exp_utils import pick_device, is_dml, SimpleAdamW, resolve_model, log_run, done_runs, ROOT
 
 
 def main():
@@ -43,17 +43,24 @@ def main():
            "batch": F.BATCH, "warmup": F.WARMUP, "input": "comment"}
     print(f"device={device} model={name} folds={folds} seeds={a.seeds}", flush=True)
 
+    pred_dir = ROOT / "results" / "preds" / a.experiment
+    pred_dir.mkdir(parents=True, exist_ok=True)
     for seed in a.seeds:
         pred = np.full(len(d), -1)
         for k in folds:
+            rid, npz = f"{a.experiment}-s{seed}-f{k}", pred_dir / f"s{seed}_f{k}.npz"
+            if rid in done_runs() and npz.exists():  # resume after a crash
+                pred[np.load(npz)["te"]] = np.load(npz)["pred3"]
+                continue
             t0 = time.time()
             _, pk, te = F.train_fold(d, k, tok, device, seed, model_name=name, lr=a.lr,
                                      epochs=a.epochs, label_smoothing=a.label_smoothing)
             pred[te] = pk
+            np.savez(npz, pred3=pk, te=te)
             y = d.y3.values[te]
             f1, acc = f1_score(y, pk, average="macro"), (pk == y).mean()
             print(f"seed {seed} fold {k}: macro-F1 {f1:.3f} acc {acc:.3f} ({time.time() - t0:.0f}s)", flush=True)
-            log_run(run_id=f"{a.experiment}-s{seed}-f{k}", experiment=a.experiment,
+            log_run(run_id=rid, experiment=a.experiment,
                     protocol="orig_65vid_5fold", config=cfg, seed=seed, fold=k,
                     n_train=int((~te).sum()), n_test=int(te.sum()), macro_f1=round(f1, 4),
                     accuracy=round(acc, 4), epochs_run=a.epochs)

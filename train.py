@@ -26,7 +26,7 @@ from transformers import AutoModel, AutoModelForSequenceClassification, AutoToke
 
 import data
 import protocol as P
-from exp_utils import pick_device, is_dml, make_optimizer, resolve_model, log_run, ROOT
+from exp_utils import pick_device, is_dml, make_optimizer, resolve_model, log_run, done_runs, ROOT
 
 COLLAPSE = torch.tensor(data.COLLAPSE)
 CURVES = ROOT / "results" / "curves.csv"
@@ -236,6 +236,8 @@ def main():
     p.add_argument("--shuffle-labels", action="store_true")
     p.add_argument("--final-holdout", action="store_true",
                    help="THE one holdout run: train on all dev videos, score splits/final_holdout_videos.txt")
+    p.add_argument("--leave-cspan-out", choices=["dev", "all"], default=None,
+                   help="train non-C-SPAN videos, test C-SPAN videos (all = 37->28, only after holdout)")
     p.add_argument("--smoke", action="store_true", help="tiny subsets, 1 epoch: plumbing test only")
     p.add_argument("--save", default=None, help="dir to save the (last seed's) best checkpoint")
     a = p.parse_args()
@@ -278,10 +280,33 @@ def main():
         marker.write_text(f"{a.experiment}\n")
         return
 
+    if a.leave_cspan_out:
+        for seed in a.seeds:
+            if f"{a.experiment}-s{seed}-lcso-{a.leave_cspan_out}" in done_runs():
+                continue
+            train, val, test, n_purged = P.leave_cspan_out_split(a.leave_cspan_out)
+            model, lt, best, curves, tr_loss = run_one(a, tok, device, train, val, test, seed, -2, n_purged, "LCSO")
+            pr, y = collapse(lt), test.y3.values
+            f1, acc = f1_score(y, pr, average="macro"), (pr == y).mean()
+            print(f"[{a.experiment}] LCSO-{a.leave_cspan_out} seed {seed}: macro-F1 {f1:.4f} acc {acc:.4f}", flush=True)
+            np.savez(pred_dir / f"s{seed}_lcso_{a.leave_cspan_out}.npz", logits=lt, idx=test.index.values, y3=y)
+            save_curves(a.experiment, seed, -2, curves)
+            log_run(run_id=f"{a.experiment}-s{seed}-lcso-{a.leave_cspan_out}", experiment=a.experiment,
+                    protocol=f"leave_cspan_out_{a.leave_cspan_out}", config=cfg, seed=seed, fold=-2,
+                    n_train=len(train), n_test=len(test), macro_f1=round(f1, 4), accuracy=round(acc, 4),
+                    best_epoch=best[3], epochs_run=len(curves), train_loss_last=round(tr_loss, 4),
+                    val_loss_best=round(best[2], 4), val_f1_best=round(best[0], 4),
+                    notes=f"near_dup_purged={n_purged}")
+            del model
+        return
+
     dev = P.load_dev()
     folds = a.folds if a.folds is not None else list(range(P.N_FOLDS))
     for seed in a.seeds:
         for k in folds:
+            if not a.smoke and f"{a.experiment}-s{seed}-f{k}" in done_runs()                     and (pred_dir / f"s{seed}_f{k}.npz").exists():
+                print(f"[{a.experiment}] seed {seed} fold {k}: already done, skipping", flush=True)
+                continue
             train, val, test, n_purged = P.cv_split(dev, k)
             if a.smoke:
                 train, val, test = train.iloc[:64], val.iloc[:32], test.iloc[:32]

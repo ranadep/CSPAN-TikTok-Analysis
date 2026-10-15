@@ -138,6 +138,25 @@ def final_split(seed=CV_SEED):
     return train, val, hold, n_purged
 
 
+def leave_cspan_out_split(scope="dev", seed=CV_SEED):
+    """Train on non-C-SPAN videos, test on C-SPAN videos. scope="dev": the 52 dev videos only
+    (30 -> 22). scope="all": all 65 (37 -> 28) -- touches holdout videos, so it is only
+    allowed after the one final holdout run has been recorded."""
+    if scope == "all":
+        assert (ROOT / "results" / "FINAL_HOLDOUT_DONE").exists(), "scope=all would touch the holdout"
+        d = load_all()
+    else:
+        d = load_dev()
+    test = d[d.is_cspan]
+    train, val = val_split(d[~d.is_cspan], seed=3000 + seed)
+    val, _ = purge(val, test)
+    train, n_purged = purge(train, val, test)
+    check_disjoint(train, test, "train/test lcso")
+    check_disjoint(train, val, "train/val lcso")
+    check_disjoint(val, test, "val/test lcso")
+    return train, val, test, n_purged
+
+
 if __name__ == "__main__":
     d = load_all()
     if not HOLDOUT_FILE.exists():

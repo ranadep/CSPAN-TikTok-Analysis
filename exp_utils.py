@@ -89,6 +89,14 @@ def git_hash():
         return "unknown"
 
 
+def done_runs():
+    """run_ids already in results/runs.csv -- lets every script resume after a crash."""
+    if not RUNS.exists():
+        return set()
+    with open(RUNS, newline="", encoding="utf-8") as f:
+        return {r["run_id"] for r in csv.DictReader(f)}
+
+
 def log_run(**row):
     """Append one (config, seed, fold) result to results/runs.csv. Every run is logged."""
     RUNS.parent.mkdir(exist_ok=True)
