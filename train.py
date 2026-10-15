@@ -12,7 +12,7 @@ logits to results/preds/<experiment>/ (for seed ensembles and error analysis).
 Defaults reproduce finetune.py's settings (twitter-roberta-base, lr 2e-5, batch 16,
 warmup 0.1, wd 0.01) except that epochs are capped at 6 with early stopping.
 """
-import argparse, json, os, time
+import argparse, gc, json, os, time
 from pathlib import Path
 
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -292,6 +292,7 @@ def main():
                  else torch.save(model.state_dict(), sd.with_suffix(".pt")))
                 tok.save_pretrained(sd)
             del model
+            gc.collect()
         marker.write_text(f"COMPLETE {a.experiment}\n")
         return
 
@@ -313,6 +314,7 @@ def main():
                     val_loss_best=round(best[2], 4), val_f1_best=round(best[0], 4),
                     notes=f"near_dup_purged={n_purged}")
             del model
+            gc.collect()
         return
 
     dev = P.load_dev()
@@ -347,6 +349,7 @@ def main():
                 Path(a.save).mkdir(parents=True, exist_ok=True)
                 model.save_pretrained(a.save); tok.save_pretrained(a.save)
             del model
+            gc.collect()
 
 
 if __name__ == "__main__":
