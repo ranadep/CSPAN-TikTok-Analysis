@@ -8,6 +8,7 @@ accuracy. Noise floor: fold std ≈ 0.05. Every run is in `results/runs.csv`; cu
 |---|---|---|---|---|---|---|
 | — | E0_comment | reference: comment only | 0.607 ± 0.054 | 0.625 | 0.617 / 0.633 | reference |
 | 1 | **E1_pair** | + video description as a sentence pair (max_len 160) | **0.642 ± 0.054** | **0.673** | **0.660 / 0.691** | **adopted (current best)** |
+| 3 | E3_pair_ep20_pat3 | epochs 6 → 20, patience 2 → 3 (user request) | 0.643 ± 0.037 | 0.677 | 0.664 / 0.695 | **noise** (paired +0.001 ± 0.030, better 6/15) |
 | 1b | E1b_pair_len256 | max_len 160 → 256 (48.6% of pairs were truncated) | 0.649 ± 0.048 (6/15 runs) | 0.687 | — | **stopped early: noise** (paired +0.001 ± 0.046 vs E1 on the same 6 runs) |
 
 ## E1: comment + video description
@@ -41,6 +42,14 @@ were using memory. Reported here, as with every run; not pursued.
 Infrastructure fixes made while running it (no effect on results): one process per (seed, fold), because DirectML
 does not release a finished fold's memory; batches padded to multiples of 32 tokens (identical predictions, max logit
 difference 7e-8).
+
+## E3: train up to 20 epochs (patience 3)
+
+No gain: paired +0.001 macro-F1 vs E1 (better in 6/15), accuracy +0.004. Best epochs ranged 2–13 (median 6), runs
+stopped at 5–16 epochs. The mean curve shows memorization, not learning: train loss 0.004 at epoch 16, val loss rising
+from 1.13 (epoch 3) to 3.25, val macro-F1 flat at ~0.60 from epoch 5 and declining after 9. Fold std narrowed
+(0.054 → 0.037) and the seed ensemble reached 0.664 / 0.695, but that is not a reason to adopt it. E1 (6 epochs)
+stays the current best; E3d tests whether more dropout changes the late-epoch picture.
 
 ## Queued next (one change each vs E1_pair)
 
