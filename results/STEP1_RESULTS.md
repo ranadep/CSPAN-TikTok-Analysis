@@ -10,6 +10,7 @@ accuracy. Noise floor: fold std ≈ 0.05. Every run is in `results/runs.csv`; cu
 | 1 | **E1_pair** | + video description as a sentence pair (max_len 160) | **0.642 ± 0.054** | **0.673** | **0.660 / 0.691** | **adopted (current best)** |
 | 3 | E3_pair_ep20_pat3 | epochs 6 → 20, patience 2 → 3 (user request) | 0.643 ± 0.037 | 0.677 | 0.664 / 0.695 | **noise** (paired +0.001 ± 0.030, better 6/15) |
 | 3d | E3d_pair_ep20_pat3_drop0.2 | E3 + encoder dropout 0.1 → 0.2 (user request) | 0.634 ± 0.048 | 0.664 | 0.654 / 0.682 | **noise, slightly worse** (paired −0.009 vs E1, −0.010 vs E3) |
+| 4a | E4a_pair_ls0.1 | label smoothing 0 → 0.1 | 0.650 ± 0.056 | 0.681 | 0.664 / 0.693 | **noise, leans favorable** (paired +0.008 ± 0.024, better 10/15) |
 | 1b | E1b_pair_len256 | max_len 160 → 256 (48.6% of pairs were truncated) | 0.649 ± 0.048 (6/15 runs) | 0.687 | — | **stopped early: noise** (paired +0.001 ± 0.046 vs E1 on the same 6 runs) |
 
 ## E1: comment + video description
@@ -58,6 +59,13 @@ Paired vs E1: −0.009 macro-F1 (better in 4/15); vs E3: −0.010 (6/15). Dropou
 at epoch 9 (E3: 0.09), val loss rising later — but val macro-F1 peaks at the same ~0.60–0.61 (epochs 6–8). Conclusion
 from E3 + E3d: **overfitting is not what limits the score.** The ceiling comes from ~1,900 training comments with
 noisy GPT-4o labels; regularization delays memorization without adding signal. E1 stays the current best.
+
+## E4a: label smoothing 0.1
+
+Paired vs E1: +0.008 macro-F1, +0.008 accuracy, better in 10/15 runs. Highest mean so far, but far below the 0.05
+noise floor, so by the handoff's rule it is **not** an established improvement. Per-class (ensemble) is nearly identical
+to E1: left 0.765, neutral 0.521, right 0.704 F1. It costs nothing and matches the noisy-label prior, so it stays a
+candidate for the final config; E1 remains the reference for the remaining one-change comparisons.
 
 ## Queued next (one change each vs E1_pair)
 
