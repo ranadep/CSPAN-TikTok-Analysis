@@ -11,6 +11,7 @@ accuracy. Noise floor: fold std ≈ 0.05. Every run is in `results/runs.csv`; cu
 | 3 | E3_pair_ep20_pat3 | epochs 6 → 20, patience 2 → 3 (user request) | 0.643 ± 0.037 | 0.677 | 0.664 / 0.695 | **noise** (paired +0.001 ± 0.030, better 6/15) |
 | 3d | E3d_pair_ep20_pat3_drop0.2 | E3 + encoder dropout 0.1 → 0.2 (user request) | 0.634 ± 0.048 | 0.664 | 0.654 / 0.682 | **noise, slightly worse** (paired −0.009 vs E1, −0.010 vs E3) |
 | 4a | E4a_pair_ls0.1 | label smoothing 0 → 0.1 | 0.650 ± 0.056 | 0.681 | 0.664 / 0.693 | **noise, leans favorable** (paired +0.008 ± 0.024, better 10/15) |
+| 2a | E2a_pair_lr1e-5 | lr 2e-5 → 1e-5 | 0.619 ± 0.050 | 0.658 | 0.633 / 0.673 | **worse** (paired −0.023 ± 0.035, better 5/15; 8/15 runs peaked at the last epoch → under-trained) |
 | 1b | E1b_pair_len256 | max_len 160 → 256 (48.6% of pairs were truncated) | 0.649 ± 0.048 (6/15 runs) | 0.687 | — | **stopped early: noise** (paired +0.001 ± 0.046 vs E1 on the same 6 runs) |
 
 ## E1: comment + video description
