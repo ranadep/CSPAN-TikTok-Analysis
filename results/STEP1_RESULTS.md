@@ -12,6 +12,7 @@ accuracy. Noise floor: fold std ≈ 0.05. Every run is in `results/runs.csv`; cu
 | 3d | E3d_pair_ep20_pat3_drop0.2 | E3 + encoder dropout 0.1 → 0.2 (user request) | 0.634 ± 0.048 | 0.664 | 0.654 / 0.682 | **noise, slightly worse** (paired −0.009 vs E1, −0.010 vs E3) |
 | 4a | E4a_pair_ls0.1 | label smoothing 0 → 0.1 | 0.650 ± 0.056 | 0.681 | 0.664 / 0.693 | **noise, leans favorable** (paired +0.008 ± 0.024, better 10/15) |
 | 2a | E2a_pair_lr1e-5 | lr 2e-5 → 1e-5 | 0.619 ± 0.050 | 0.658 | 0.633 / 0.673 | **worse** (paired −0.023 ± 0.035, better 5/15; 8/15 runs peaked at the last epoch → under-trained) |
+| 2b | E2b_pair_lr3e-5 | lr 2e-5 → 3e-5 | 0.645 ± 0.069 | 0.676 | 0.669 / 0.697 | **noise** (paired +0.002 ± 0.039, better 8/15; higher variance) |
 | 1b | E1b_pair_len256 | max_len 160 → 256 (48.6% of pairs were truncated) | 0.649 ± 0.048 (6/15 runs) | 0.687 | — | **stopped early: noise** (paired +0.001 ± 0.046 vs E1 on the same 6 runs) |
 
 ## E1: comment + video description
@@ -67,6 +68,11 @@ Paired vs E1: +0.008 macro-F1, +0.008 accuracy, better in 10/15 runs. Highest me
 noise floor, so by the handoff's rule it is **not** an established improvement. Per-class (ensemble) is nearly identical
 to E1: left 0.765, neutral 0.521, right 0.704 F1. It costs nothing and matches the noisy-label prior, so it stays a
 candidate for the final config; E1 remains the reference for the remaining one-change comparisons.
+
+## Learning-rate grid (E2a, E2b)
+
+1e-5 under-trains in 6 epochs (−0.023); 3e-5 ties 2e-5 (+0.002) with more fold-to-fold variance (0.069 vs 0.054).
+2e-5 (E1) is kept.
 
 ## Queued next (one change each vs E1_pair)
 
