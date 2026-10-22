@@ -13,6 +13,9 @@ accuracy. Noise floor: fold std ≈ 0.05. Every run is in `results/runs.csv`; cu
 | 4a | E4a_pair_ls0.1 | label smoothing 0 → 0.1 | 0.650 ± 0.056 | 0.681 | 0.664 / 0.693 | **noise, leans favorable** (paired +0.008 ± 0.024, better 10/15) |
 | 2a | E2a_pair_lr1e-5 | lr 2e-5 → 1e-5 | 0.619 ± 0.050 | 0.658 | 0.633 / 0.673 | **worse** (paired −0.023 ± 0.035, better 5/15; 8/15 runs peaked at the last epoch → under-trained) |
 | 2b | E2b_pair_lr3e-5 | lr 2e-5 → 3e-5 | 0.645 ± 0.069 | 0.676 | 0.669 / 0.697 | **noise** (paired +0.002 ± 0.039, better 8/15; higher variance) |
+| 4b | E4b_pair_weighted | class-weighted cross-entropy | 0.639 ± 0.053 | 0.674 | 0.665 / 0.698 | **noise** (paired −0.004, better 9/15) |
+| 5a | E5a_pair_bertweet | backbone → vinai/bertweet-base (max_len 128 forced) | 0.561 ± 0.057 | 0.602 | 0.574 / 0.613 | **worse** (paired −0.081, better 0/15) |
+| 5b | E5b_pair_debertav3 | backbone → microsoft/deberta-v3-base | — | — | — | **not run**: DirectML has no backward for DeBERTa's scatter op; needs CUDA (laptop or cluster) |
 | 1b | E1b_pair_len256 | max_len 160 → 256 (48.6% of pairs were truncated) | 0.649 ± 0.048 (6/15 runs) | 0.687 | — | **stopped early: noise** (paired +0.001 ± 0.046 vs E1 on the same 6 runs) |
 
 ## E1: comment + video description
@@ -74,7 +77,14 @@ candidate for the final config; E1 remains the reference for the remaining one-c
 1e-5 under-trains in 6 epochs (−0.023); 3e-5 ties 2e-5 (+0.002) with more fold-to-fold variance (0.069 vs 0.054).
 2e-5 (E1) is kept.
 
-## Queued next (one change each vs E1_pair)
+## Where Step 1 ends
+
+Every standard knob (epochs, dropout, label smoothing, lr, class weights, input length, BERTweet) is within noise of
+E1 or worse. Combined with the error audit (`results/LABEL_AUDIT.md`: ~2/3 of errors are model mistakes needing world
+knowledge, ~1/5 label errors), the next gains have to come from more (LLM-labeled) data or larger backbones on CUDA,
+not tuning. Team summary deck: https://claude.ai/artifact/Lnbh1qhoodZ7bzYFh29UNe.
+
+## Original queue (for reference)
 
 E3 up to 20 epochs, patience 3 (5/15 E1 runs peaked at the 6-epoch cap) · E3d same + dropout 0.2 · 2 lr 1e-5 · 2 lr 3e-5 · then 3 label smoothing 0.1, class-weighted CE ·
 4 bertweet-base, deberta-v3-base, (desktop only) roberta-large · 5 seed ensemble · if gains flatten: BiLSTM head /
